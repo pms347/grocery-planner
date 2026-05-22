@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no">
+<title>மளிகை திட்டமிடல்</title>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --p:#16a34a;--pd:#15803d;--pl:#dcfce7;
+  --acc:#f59e0b;--err:#ef4444;
+  --bg:#f0fdf4;--card:#fff;
+  --txt:#111827;--muted:#6b7280;--border:#e5e7eb;
+  --nav:65px;--hdr:56px;
+}
+body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--txt);max-width:430px;margin:0 auto;min-height:100vh;overflow-x:hidden}
+
+/* ── AUTH ── */
+#authScreen{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:linear-gradient(150deg,#16a34a,#166534)}
+.auth-logo{font-size:56px;margin-bottom:6px;text-align:center}
+.auth-title{color:#fff;font-size:24px;font-weight:800;text-align:center;margin-bottom:4px}
+.auth-sub{color:rgba(255,255,255,.75);font-size:13px;text-align:center;margin-bottom:28px}
+.auth-card{background:#fff;border-radius:22px;padding:24px;width:100%;max-width:390px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.auth-tabs{display:flex;background:#f3f4f6;border-radius:12px;padding:4px;margin-bottom:20px}
+.auth-tab{flex:1;padding:9px;border:none;background:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:var(--muted);transition:all .2s}
+.auth-tab.active{background:#fff;color:var(--p);box-shadow:0 2px 8px rgba(0,0,0,.1)}
+.ig{margin-bottom:13px}
+.ig label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:.4px}
+.ig input,.ig select,.ig textarea{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:11px;font-size:15px;outline:none;font-family:inherit;background:#fff;transition:border-color .2s}
+.ig input:focus,.ig select:focus,.ig textarea:focus{border-color:var(--p)}
+.btn{width:100%;padding:14px;background:var(--p);color:#fff;border:none;border-radius:12px;font-size:15px;font-weight:700;cursor:pointer;transition:all .2s;font-family:inherit}
+.btn:active{transform:scale(.98);background:var(--pd)}
+.btn.outline{background:transparent;color:var(--p);border:1.5px solid var(--p);margin-top:8px}
+.btn.danger{background:#fee2e2;color:var(--err);border:none;margin-top:8px}
+.auth-err{color:var(--err);font-size:13px;text-align:center;margin-top:10px;display:none}
+
+/* ── MAIN ── */
+#mainApp{display:none}
+.app-hdr{position:fixed;top:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--hdr);background:var(--p);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:100;box-shadow:0 2px 12px rgba(0,0,0,.15)}
+.hdr-title{color:#fff;font-size:17px;font-weight:800}
+.hdr-right{display:flex;gap:8px}
+.icon-btn{background:rgba(255,255,255,.18);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:17px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.content{padding:calc(var(--hdr) + 14px) 14px calc(var(--nav) + 14px)}
+.bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:var(--nav);background:#fff;border-top:1px solid var(--border);display:flex;z-index:100;box-shadow:0 -4px 20px rgba(0,0,0,.08)}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:none;background:none;color:var(--muted);font-size:10px;font-weight:600;cursor:pointer;font-family:inherit;padding:6px 2px}
+.nav-item .ni{font-size:22px;transition:transform .2s}
+.nav-item.active{color:var(--p)}
+.nav-item.active .ni{transform:scale(1.15)}
+.screen{display:none}
+.screen.active{display:block}
+
+/* Cards */
+.card{background:#fff;border-radius:16px;padding:15px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.card-title{font-size:12px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.6px;margin-bottom:10px}
+.sec-title{font-size:16px;font-weight:800;color:var(--txt);margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
+.sec-link{font-size:13px;color:var(--p);font-weight:600;cursor:pointer;border:none;background:none;font-family:inherit}
+
+/* Month selector */
+.month-sel{display:flex;align-items:center;justify-content:space-between;background:#fff;border-radius:14px;padding:10px 14px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.mn-btn{background:var(--pl);border:none;color:var(--p);width:34px;height:34px;border-radius:50%;font-size:20px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:700}
+.month-lbl{font-size:16px;font-weight:800}
+
+/* Budget card */
+.budget-card{background:linear-gradient(135deg,var(--p),var(--pd));border-radius:18px;padding:18px;margin-bottom:12px;color:#fff;box-shadow:0 6px 20px rgba(22,163,74,.3)}
+.bc-label{font-size:12px;opacity:.8;margin-bottom:4px}
+.bc-amt{font-size:30px;font-weight:900;margin-bottom:2px}
+.bc-sub{font-size:13px;opacity:.8;margin-bottom:14px}
+.pbar-bg{background:rgba(255,255,255,.25);border-radius:100px;height:9px;overflow:hidden}
+.pbar-fill{height:100%;border-radius:100px;background:#fff;transition:width .5s ease}
+.pbar-fill.warn{background:#fbbf24}
+.pbar-fill.crit{background:#f87171}
+.bc-meta{display:flex;justify-content:space-between;margin-top:8px;font-size:12px;opacity:.9}
+
+/* Stats */
+.stats-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+.stat-card{background:#fff;border-radius:14px;padding:14px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.stat-icon{font-size:22px;margin-bottom:5px}
+.stat-val{font-size:22px;font-weight:900}
+.stat-lbl{font-size:11px;color:var(--muted);margin-top:2px}
+
+/* Entry items */
+.entry-item{display:flex;align-items:center;padding:11px 0;border-bottom:1px solid var(--border);gap:11px;cursor:pointer}
+.entry-item:last-child{border-bottom:none}
+.entry-emoji{width:42px;height:42px;border-radius:12px;background:var(--pl);display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.entry-info{flex:1;min-width:0}
+.entry-name{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.entry-meta{font-size:12px;color:var(--muted);margin-top:2px}
+.entry-price{text-align:right;flex-shrink:0}
+.entry-price-main{font-size:16px;font-weight:800}
+.entry-price-sub{font-size:11px;color:var(--muted)}
+.badge{display:inline-flex;align-items:center;gap:2px;padding:2px 7px;border-radius:20px;font-size:11px;font-weight:700;margin-left:4px}
+.b-up{background:#fee2e2;color:#dc2626}
+.b-down{background:#dcfce7;color:#16a34a}
+.b-same{background:#f3f4f6;color:#6b7280}
+
+/* Form */
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{padding:5px 11px;background:var(--pl);color:var(--pd);border-radius:20px;font-size:12px;cursor:pointer;border:none;font-family:inherit;font-weight:600}
+.chip:active{background:var(--p);color:#fff}
+
+/* History */
+.filter-row{display:flex;gap:8px;margin-bottom:12px;overflow-x:auto;padding-bottom:4px;scrollbar-width:none}
+.fchip{padding:7px 15px;border-radius:20px;border:1.5px solid var(--border);background:#fff;font-size:13px;cursor:pointer;white-space:nowrap;font-family:inherit;font-weight:600;color:var(--muted)}
+.fchip.active{background:var(--p);color:#fff;border-color:var(--p)}
+.search-bar{display:flex;align-items:center;background:#fff;border-radius:12px;padding:10px 14px;gap:8px;margin-bottom:12px;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.search-bar input{flex:1;border:none;outline:none;font-size:15px;font-family:inherit}
+.grp-hdr{font-size:13px;font-weight:700;color:var(--muted);padding:12px 0 6px;text-transform:uppercase;letter-spacing:.5px;display:flex;justify-content:space-between}
+
+/* Compare */
+.compare-table{width:100%;border-collapse:collapse;font-size:13px}
+.compare-table th{background:var(--pl);padding:9px 10px;text-align:left;font-weight:700;color:var(--pd);font-size:12px}
+.compare-table td{padding:10px;border-bottom:1px solid var(--border)}
+.compare-table tr:last-child td{border-bottom:none}
+.chart-wrap{position:relative;height:190px;margin-top:12px}
+
+/* Shopping */
+.shop-item{display:flex;align-items:center;padding:11px 0;gap:11px;border-bottom:1px solid var(--border)}
+.shop-item:last-child{border-bottom:none}
+.chk{width:26px;height:26px;border-radius:8px;border:2px solid var(--border);cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s;font-size:14px}
+.chk.on{background:var(--p);border-color:var(--p);color:#fff}
+.shop-item.done .s-name{text-decoration:line-through;color:var(--muted)}
+.s-name{font-size:15px;font-weight:700;flex:1}
+.s-qty{font-size:12px;color:var(--muted)}
+.del-btn{background:#fee2e2;color:var(--err);border:none;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:17px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* Price alerts */
+.alert-item{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}
+.alert-item:last-child{border-bottom:none}
+
+/* Tab pills */
+.tab-pills{display:flex;background:#f3f4f6;border-radius:12px;padding:4px;margin-bottom:14px}
+.tab-pill{flex:1;padding:8px;border:none;background:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);font-family:inherit;transition:all .2s}
+.tab-pill.active{background:#fff;color:var(--p);box-shadow:0 2px 6px rgba(0,0,0,.1)}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:200;display:none;align-items:flex-end;justify-content:center}
+.overlay.open{display:flex}
+.sheet{background:#fff;border-radius:22px 22px 0 0;padding:20px;width:100%;max-width:430px;max-height:88vh;overflow-y:auto}
+.handle{width:40px;height:4px;background:var(--border);border-radius:2px;margin:0 auto 16px}
+.sheet-title{font-size:18px;font-weight:800;margin-bottom:16px}
+
+/* Toast */
+.toast{position:fixed;bottom:calc(var(--nav) + 80px);left:50%;transform:translateX(-50%);background:#111;color:#fff;padding:12px 20px;border-radius:12px;font-size:14px;font-weight:600;z-index:999;opacity:0;transition:opacity .3s;white-space:nowrap;pointer-events:none}
+.toast.show{opacity:1}
+
+/* Utils */
+.loading{display:flex;align-items:center;justify-content:center;padding:36px;color:var(--muted);font-size:14px}
+.spin{width:22px;height:22px;border:3px solid var(--border);border-top-color:var(--p);border-radius:50%;animation:spin .7s linear infinite;margin-right:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{text-align:center;padding:36px 20px;color:var(--muted)}
+.empty .ei{font-size:48px;margin-bottom:12px}
+.empty p{font-size:14px}
+.alert-box{padding:11px 14px;border-radius:12px;margin-bottom:10px;font-size:13px;font-weight:500}
+.a-info{background:#dbeafe;color:#1e40af}
+.a-warn{background:#fef3c7;color:#92400e}
+.a-ok{background:#dcfce7;color:#166534}
+.a-err{background:#fee2e2;color:#991b1b}
+.mb0{margin-bottom:0}
+</style>
+</head>
+<body>
+
+<!-- ══ AUTH ══ -->
+<div id="authScreen">
+  <div class="auth-logo">🛒</div>
+  <h1 class="auth-title">மளிகை திட்டமிடல்</h1>
+  <p class="auth-sub">Monthly Grocery Planner</p>
+  <div class="auth-card">
+    <div class="auth-tabs">
+      <button class="auth-tab active" onclick="swTab('login')">உள்நுழை</button>
+      <button class="auth-tab" onclick="swTab('reg')">பதிவு செய்</button>
+    </div>
+    <div id="loginForm">
+      <div class="ig"><label>மின்னஞ்சல்</label><input type="email" id="lEmail" placeholder="you@email.com"></div>
+      <div class="ig"><label>கடவுச்சொல்</label><input type="password" id="lPass" placeholder="••••••••"></div>
+      <button class="btn" onclick="doLogin()">உள்நுழை →</button>
+    </div>
+    <div id="regForm" style="display:none">
+      <div class="ig"><label>பெயர்</label><input type="text" id="rName" placeholder="உங்கள் பெயர்"></div>
+      <div class="ig"><label>மின்னஞ்சல்</label><input type="email" id="rEmail" placeholder="you@email.com"></div>
+      <div class="ig"><label>கடவுச்சொல்</label><input type="password" id="rPass" placeholder="••••••••"></div>
+      <button class="btn" onclick="doReg()">பதிவு செய் →</button>
+    </div>
+    <p class="auth-err" id="authErr"></p>
+  </div>
+</div>
+
+<!-- ══ MAIN APP ══ -->
+<div id="mainApp">
+  <div class="app-hdr">
+    <span class="hdr-title" id="hdrTitle">🛒 மளிகை</span>
+    <div class="hdr-right">
+      <button class="icon-btn" onclick="openBudgetModal()">💰</button>
+      <button class="icon-btn" onclick="doLogout()">👤</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- HOME -->
+    <div class="screen active" id="sc-home">
+      <div class="month-sel">
+        <button class="mn-btn" onclick="chgMonth(-1)">‹</button>
+        <span class="month-lbl" id="mLabel">—</span>
+        <button class="mn-btn" onclick="chgMonth(1)">›</button>
+      </div>
+      <div class="budget-card">
+        <div class="bc-label">மாத மொத்த செலவு</div>
+        <div class="bc-amt" id="bcAmt">₹0</div>
+        <div class="bc-sub" id="bcSub">Budget not set • Tap 💰 to set</div>
+        <div class="pbar-bg"><div class="pbar-fill" id="pbarFill" style="width:0%"></div></div>
+        <div class="bc-meta"><span id="bcL">₹0 spent</span><span id="bcR">No limit</span></div>
+      </div>
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-val" id="stItems">0</div><div class="stat-lbl">Items this month</div></div>
+        <div class="stat-card"><div class="stat-icon">📈</div><div class="stat-val" id="stInc">0</div><div class="stat-lbl">Price increases</div></div>
+      </div>
+      <div id="alertsCard" class="card" style="display:none">
+        <div class="card-title">⚠️ விலை மாற்றங்கள் (vs last month)</div>
+        <div id="alertsList"></div>
+      </div>
+      <div class="card">
+        <div class="sec-title">சமீபத்திய பதிவுகள் <button class="sec-link" onclick="goTab('history')">எல்லாம் →</button></div>
+        <div id="recentList"><div class="loading"><div class="spin"></div>ஏற்றுகிறது...</div></div>
+      </div>
+    </div>
+
+    <!-- ADD ENTRY -->
+    <div class="screen" id="sc-add">
+      <div class="card">
+        <div class="sec-title" id="addTitle">➕ புதிய பதிவு சேர்க்க</div>
+        <div class="ig"><label>தேதி</label><input type="date" id="eDate"></div>
+        <div class="ig"><label>வகை</label>
+          <select id="eCat" onchange="updateChips()">
+            <option value="காய்கறிகள்">🥬 காய்கறிகள் (Vegetables)</option>
+            <option value="பழங்கள்">🍎 பழங்கள் (Fruits)</option>
+            <option value="தானியங்கள்">🌾 தானியங்கள் (Grains)</option>
+            <option value="பருப்பு வகைகள்">🫘 பருப்பு வகைகள் (Pulses)</option>
+            <option value="மசாலா">🌶️ மசாலா (Spices)</option>
+            <option value="எண்ணெய்">🫙 எண்ணெய் (Oil)</option>
+            <option value="பால் பொருட்கள்">🥛 பால் பொருட்கள் (Dairy)</option>
+            <option value="இறைச்சி">🍖 இறைச்சி (Meat)</option>
+            <option value="மீன்">🐟 மீன் (Fish)</option>
+            <option value="இதர">📦 இதர (Others)</option>
+          </select>
+        </div>
+        <div class="ig">
+          <label>பொருள் பெயர்</label>
+          <input type="text" id="eName" placeholder="எ.கா: அரிசி, வெங்காயம்..." oninput="onNameInput()">
+          <div class="chips" id="chipsBox"></div>
+        </div>
+        <div class="form-row">
+          <div class="ig"><label>அளவு</label><input type="number" id="eAmt" placeholder="0" step="0.1" min="0" oninput="autoCalc()"></div>
+          <div class="ig"><label>அலகு</label>
+            <select id="eUnit">
+              <option value="kg">கிலோ (kg)</option>
+              <option value="g">கிராம் (g)</option>
+              <option value="litre">லிட்டர் (L)</option>
+              <option value="ml">மில்லி (ml)</option>
+              <option value="nos">எண்ணிக்கை</option>
+              <option value="packet">பாக்கெட்</option>
+              <option value="bunch">கட்டு</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="ig"><label>₹/அலகு விலை</label><input type="number" id="ePPU" placeholder="0.00" step="0.01" min="0" oninput="autoCalc()"></div>
+          <div class="ig"><label>செலுத்திய விலை ₹</label><input type="number" id="eActual" placeholder="0.00" step="0.01" min="0"></div>
+        </div>
+        <div class="ig"><label>குறிப்பு (optional)</label><textarea id="eNotes" rows="2" placeholder="எந்த கடையில் வாங்கினீர்கள்..."></textarea></div>
+        <button class="btn" id="saveBtn" onclick="saveEntry()">✓ சேமி</button>
+        <button class="btn outline" onclick="clearForm()">✕ அழி</button>
+      </div>
+      <div class="card" id="lastBoughtCard" style="display:none">
+        <div class="card-title">⚡ இதற்கு முன் வாங்கியது</div>
+        <div id="lastBoughtInfo"></div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="screen" id="sc-history">
+      <div class="search-bar">
+        <span>🔍</span>
+        <input type="text" id="hSearch" placeholder="பொருள் தேடு..." oninput="renderHistory()">
+      </div>
+      <div class="filter-row">
+        <button class="fchip active" onclick="setHFilter('all',this)">எல்லாம்</button>
+        <button class="fchip" onclick="setHFilter('month',this)">இம்மாதம்</button>
+        <button class="fchip" onclick="setHFilter('காய்கறிகள்',this)">காய்கறி</button>
+        <button class="fchip" onclick="setHFilter('பழங்கள்',this)">பழம்</button>
+        <button class="fchip" onclick="setHFilter('தானியங்கள்',this)">தானியம்</button>
+        <button class="fchip" onclick="setHFilter('மசாலா',this)">மசாலா</button>
+        <button class="fchip" onclick="setHFilter('மீன்',this)">மீன்</button>
+      </div>
+      <div id="historyList"><div class="loading"><div class="spin"></div>ஏற்றுகிறது...</div></div>
+    </div>
+
+    <!-- COMPARE -->
+    <div class="screen" id="sc-compare">
+      <div class="card">
+        <div class="card-title">📊 பொருள் விலை ஒப்பீடு</div>
+        <div class="ig mb0"><label>பொருளை தேர்ந்தெடு</label>
+          <select id="cmpSel" onchange="loadCompare()"><option value="">— தேர்ந்தெடு —</option></select>
+        </div>
+      </div>
+      <div id="cmpResults">
+        <div class="empty"><div class="ei">📊</div><p>ஒரு பொருளை தேர்ந்தெடுக்கவும்<br>to see price trends</p></div>
+      </div>
+    </div>
+
+    <!-- SHOPPING -->
+    <div class="screen" id="sc-shopping">
+      <div class="card">
+        <div class="sec-title">🛍️ வாங்க வேண்டியவை <span id="shopEst" style="font-size:13px;color:var(--p);font-weight:700"></span></div>
+        <div style="display:flex;gap:8px;margin-bottom:14px">
+          <div style="flex:1">
+            <input type="text" id="sName" placeholder="பொருள் பெயர்..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;font-family:inherit;outline:none" oninput="onShopNameInput()">
+            <div class="chips" id="shopChips" style="margin-top:6px"></div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:4px">
+            <input type="number" id="sQty" placeholder="அளவு" style="width:68px;padding:10px 8px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;outline:none" min="0" step="0.1">
+            <select id="sUnit" style="padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;outline:none">
+              <option value="kg">kg</option><option value="g">g</option><option value="litre">L</option><option value="nos">nos</option><option value="packet">pkt</option><option value="bunch">katu</option>
+            </select>
+          </div>
+          <button onclick="addShopItem()" style="background:var(--p);color:#fff;border:none;border-radius:10px;width:46px;font-size:26px;cursor:pointer;flex-shrink:0;align-self:flex-start;height:44px">+</button>
+        </div>
+        <div id="shopList"><div class="empty" style="padding:16px"><div class="ei">🛍️</div><p>இன்னும் சேர்க்கவில்லை</p></div></div>
+        <div id="shopActions" style="display:none;flex-direction:column;gap:8px;margin-top:12px">
+          <button class="btn" onclick="markShopDone()">✓ வாங்கியவற்றை பதிவு செய்</button>
+          <button class="btn outline" onclick="clearDone()">🗑️ வாங்கியவற்றை நீக்கு</button>
+        </div>
+      </div>
+      <div class="card" id="shopEstCard" style="display:none">
+        <div class="card-title">💡 கடைசி விலை அடிப்படையில் மதிப்பீடு</div>
+        <div id="shopEstList"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <nav class="bottom-nav">
+    <button class="nav-item active" onclick="goTab('home')" id="nav-home"><span class="ni">🏠</span><span>முகப்பு</span></button>
+    <button class="nav-item" onclick="goTab('history')" id="nav-history"><span class="ni">📋</span><span>வரலாறு</span></button>
+    <button class="nav-item" onclick="goTab('add')" id="nav-add"><span class="ni">➕</span><span>சேர்</span></button>
+    <button class="nav-item" onclick="goTab('compare')" id="nav-compare"><span class="ni">📊</span><span>ஒப்பீடு</span></button>
+    <button class="nav-item" onclick="goTab('shopping')" id="nav-shopping"><span class="ni">🛍️</span><span>பட்டியல்</span></button>
+  </nav>
+</div>
+
+<!-- Budget Modal -->
+<div class="overlay" id="budgetOverlay">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title">💰 மாத பட்ஜெட் அமை</div>
+    <div class="ig"><label>மாதம்</label><input type="month" id="bMonth"></div>
+    <div class="ig"><label>பட்ஜெட் தொகை (₹)</label><input type="number" id="bLimit" placeholder="எ.கா: 5000" min="0"></div>
+    <button class="btn" onclick="saveBudget()">✓ சேமி</button>
+    <button class="btn outline" onclick="closeBudget()">Cancel</button>
+  </div>
+</div>
+
+<!-- Entry Detail Modal -->
+<div class="overlay" id="entryOverlay">
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="sheet-title" id="eModalTitle">பதிவு விவரம்</div>
+    <div id="eModalBody"></div>
+    <button class="btn outline" onclick="editSelected()" style="margin-top:4px">✏️ திருத்து</button>
+    <button class="btn danger" onclick="deleteSelected()">🗑️ நீக்கு</button>
+    <button class="btn outline" onclick="closeEntry()" style="border-color:var(--border);color:var(--muted);margin-top:4px">மூடு</button>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// FIREBASE CONFIG — replace with yours
+// ══════════════════════════════════════════
+const FC = {
+  apiKey: "AIzaSyDG70_i_fX2nKvLYfZvH74WYxhGMVwpGyU",
+  authDomain: "grocery-planner-e5dc6.firebaseapp.com",
+  projectId: "grocery-planner-e5dc6",
+  storageBucket: "grocery-planner-e5dc6.firebasestorage.app",
+  messagingSenderId: "279073084670",
+  appId: "1:279073084670:web:1ead7b4ae15e6a52c501af"
+};
+firebase.initializeApp(FC);
+const auth = firebase.auth();
+const db   = firebase.firestore();
+
+// ── STATE ──
+let user=null, entries=[], shopping=[], budgets={};
+let curMonth=new Date().toISOString().slice(0,7);
+let hFilter='all', editId=null, selId=null;
+let priceChart=null;
+
+const MO_TA=['ஜனவரி','பிப்ரவரி','மார்ச்','ஏப்ரல்','மே','ஜூன்','ஜூலை','ஆகஸ்ட்','செப்டம்பர்','அக்டோபர்','நவம்பர்','டிசம்பர்'];
+
+const SUGG={
+  'காய்கறிகள்':['தக்காளி','வெங்காயம்','உருளைக்கிழங்கு','கத்தரிக்காய்','பீன்ஸ்','கேரட்','முருங்கைக்காய்','பாகற்காய்','வெண்டைக்காய்','பூசணி','சுரைக்காய்','கோஸ்','கீரை','பூண்டு','இஞ்சி','மிளகாய்'],
+  'பழங்கள்':['வாழைப்பழம்','ஆப்பிள்','திராட்சை','மாம்பழம்','பப்பாளி','ஆரஞ்சு','மாதுளம்பழம்','தர்பூசணி','சப்போட்டா','பேரிக்காய்'],
+  'தானியங்கள்':['அரிசி','இட்லி அரிசி','கோதுமை மாவு','ரவை','மைதா','கேழ்வரகு','கம்பு','சோளம்','வரகு','சாமை'],
+  'பருப்பு வகைகள்':['துவரம் பருப்பு','கடலைப் பருப்பு','உளுந்து','பாசிப் பருப்பு','கடலை','வேர்க்கடலை','ராஜ்மா','பட்டாணி'],
+  'மசாலா':['கடுகு','சீரகம்','மஞ்சள் தூள்','மிளகு','கரம் மசாலா','கொத்தமல்லி','வெந்தயம்','பட்டை','கிராம்பு','ஏலக்காய்','தனியா','பிரியாணி இலை'],
+  'எண்ணெய்':['கடலை எண்ணெய்','தேங்காய் எண்ணெய்','சூரியகாந்தி எண்ணெய்','நல்லெண்ணெய்','நெய்','வனஸ்பதி'],
+  'பால் பொருட்கள்':['பால்','தயிர்','வெண்ணெய்','பனீர்','கோவா','மோர்'],
+  'இறைச்சி':['கோழி','ஆட்டிறைச்சி','மாட்டிறைச்சி','முட்டை'],
+  'மீன்':['கெளுத்தி','வஞ்சிரம்','சீலா','சுறா','இறால்','நண்டு','கணவாய்'],
+  'இதர':['உப்பு','சர்க்கரை','வெல்லம்','தேங்காய்','புளி','தேன்','காபி','தேயிலை']
+};
+const EMO={'காய்கறிகள்':'🥬','பழங்கள்':'🍎','தானியங்கள்':'🌾','பருப்பு வகைகள்':'🫘','மசாலா':'🌶️','எண்ணெய்':'🫙','பால் பொருட்கள்':'🥛','இறைச்சி':'🍖','மீன்':'🐟','இதர':'📦'};
+
+// ── AUTH ──
+auth.onAuthStateChanged(u=>{
+  if(u){user=u;document.getElementById('authScreen').style.display='none';document.getElementById('mainApp').style.display='block';init();}
+  else{user=null;document.getElementById('authScreen').style.display='flex';document.getElementById('mainApp').style.display='none';}
+});
+function swTab(t){
+  document.getElementById('loginForm').style.display=t==='login'?'block':'none';
+  document.getElementById('regForm').style.display=t==='reg'?'block':'none';
+  document.querySelectorAll('.auth-tab').forEach((x,i)=>x.classList.toggle('active',(i===0)===(t==='login')));
+  document.getElementById('authErr').style.display='none';
+}
+async function doLogin(){
+  try{await auth.signInWithEmailAndPassword(document.getElementById('lEmail').value.trim(),document.getElementById('lPass').value);}
+  catch(e){showAErr(e.message);}
+}
+async function doReg(){
+  try{const c=await auth.createUserWithEmailAndPassword(document.getElementById('rEmail').value.trim(),document.getElementById('rPass').value);await c.user.updateProfile({displayName:document.getElementById('rName').value.trim()});}
+  catch(e){showAErr(e.message);}
+}
+function doLogout(){if(confirm('வெளியேற விரும்புகிறீர்களா?'))auth.signOut();}
+function showAErr(m){const e=document.getElementById('authErr');e.textContent=m;e.style.display='block';}
+
+// ── INIT ──
+async function init(){
+  setMonthLabel();
+  document.getElementById('eDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('bMonth').value=curMonth;
+  updateChips();
+  await Promise.all([loadEntries(),loadBudgets(),loadShopping()]);
+  renderHome();renderHistory();fillCmpSel();
+}
+const uRef=()=>db.collection('users').doc(user.uid);
+async function loadEntries(){const s=await uRef().collection('entries').orderBy('date','desc').get();entries=s.docs.map(d=>({id:d.id,...d.data()}));}
+async function loadBudgets(){const s=await uRef().collection('budgets').get();budgets={};s.docs.forEach(d=>{budgets[d.id]=d.data();});}
+async function loadShopping(){const s=await uRef().collection('shopping').orderBy('createdAt','desc').get();shopping=s.docs.map(d=>({id:d.id,...d.data()}));renderShop();}
+
+// ── MONTH ──
+function setMonthLabel(){const[y,m]=curMonth.split('-');document.getElementById('mLabel').textContent=`${MO_TA[+m-1]} ${y}`;}
+function chgMonth(d){const dt=new Date(curMonth+'-01');dt.setMonth(dt.getMonth()+d);curMonth=dt.toISOString().slice(0,7);setMonthLabel();renderHome();renderHistory();}
+const mEntries=m=>entries.filter(e=>e.date&&e.date.startsWith(m));
+
+// ── HOME ──
+function renderHome(){
+  const mo=mEntries(curMonth);
+  const total=mo.reduce((s,e)=>s+(e.actualPrice||0),0);
+  document.getElementById('bcAmt').textContent=`₹${total.toFixed(0)}`;
+  document.getElementById('stItems').textContent=mo.length;
+  const b=budgets[curMonth];
+  const fill=document.getElementById('pbarFill');
+  if(b&&b.limit>0){
+    const p=Math.min((total/b.limit)*100,100);
+    fill.style.width=p+'%';
+    fill.className='pbar-fill'+(p>90?' crit':p>70?' warn':'');
+    document.getElementById('bcSub').textContent=`பட்ஜெட்: ₹${b.limit}`;
+    document.getElementById('bcL').textContent=`₹${total.toFixed(0)} spent`;
+    document.getElementById('bcR').textContent=`₹${Math.max(0,b.limit-total).toFixed(0)} மீதம்`;
+  } else {
+    fill.style.width='0%';fill.className='pbar-fill';
+    document.getElementById('bcSub').textContent='Budget not set • Tap 💰 to set';
+    document.getElementById('bcL').textContent=`₹${total.toFixed(0)} spent`;
+    document.getElementById('bcR').textContent='No limit';
+  }
+  const alerts=getPriceAlerts(mo);
+  document.getElementById('stInc').textContent=alerts.filter(a=>a.chg>0).length;
+  renderAlerts(alerts);
+  renderEntryList(mo.slice(0,7),'recentList',true);
+}
+
+function getPriceAlerts(mo){
+  const[y,m]=curMonth.split('-');
+  const prev=mEntries(new Date(+y,+m-2,1).toISOString().slice(0,7));
+  const res=[];
+  mo.forEach(ce=>{
+    if(!ce.pricePerUnit) return;
+    const p=prev.find(x=>x.name===ce.name&&x.pricePerUnit);
+    if(p){const chg=((ce.pricePerUnit-p.pricePerUnit)/p.pricePerUnit)*100;if(Math.abs(chg)>=5)res.push({name:ce.name,chg,prev:p.pricePerUnit,cur:ce.pricePerUnit});}
+  });
+  return res;
+}
+function renderAlerts(alerts){
+  if(!alerts.length){document.getElementById('alertsCard').style.display='none';return;}
+  document.getElementById('alertsCard').style.display='block';
+  document.getElementById('alertsList').innerHTML=alerts.slice(0,5).map(a=>`
+    <div class="alert-item">
+      <span style="font-weight:700;font-size:14px">${a.name}</span>
+      <div style="text-align:right">
+        <span class="badge ${a.chg>0?'b-up':'b-down'}">${a.chg>0?'↑':'↓'} ${Math.abs(a.chg).toFixed(0)}%</span>
+        <div style="font-size:11px;color:var(--muted);margin-top:2px">₹${a.prev.toFixed(0)} → ₹${a.cur.toFixed(0)}/unit</div>
+      </div>
+    </div>`).join('');
+}
+function renderEntryList(list,containerId,trend=false){
+  const el=document.getElementById(containerId);
+  if(!list.length){el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">📭</div><p>பதிவுகள் இல்லை</p></div>';return;}
+  const[y,m]=curMonth.split('-');
+  const prev=mEntries(new Date(+y,+m-2,1).toISOString().slice(0,7));
+  el.innerHTML=list.map(e=>{
+    const em=EMO[e.category]||'📦';
+    let tb='';
+    if(trend&&e.pricePerUnit){const p=prev.find(x=>x.name===e.name&&x.pricePerUnit);if(p){const c=((e.pricePerUnit-p.pricePerUnit)/p.pricePerUnit)*100;if(Math.abs(c)>=2)tb=`<span class="badge ${c>0?'b-up':'b-down'}">${c>0?'↑':'↓'}${Math.abs(c).toFixed(0)}%</span>`;}}
+    return`<div class="entry-item" onclick="openEntry('${e.id}')">
+      <div class="entry-emoji">${em}</div>
+      <div class="entry-info">
+        <div class="entry-name">${e.name}${tb}</div>
+        <div class="entry-meta">${e.amount} ${e.unit} • ${fDate(e.date)} • ${e.category}</div>
+      </div>
+      <div class="entry-price">
+        <div class="entry-price-main">₹${(e.actualPrice||0).toFixed(0)}</div>
+        <div class="entry-price-sub">₹${(e.pricePerUnit||0).toFixed(0)}/${e.unit}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── ADD ENTRY ──
+function updateChips(){
+  const cat=document.getElementById('eCat').value;
+  const chips=(SUGG[cat]||[]).slice(0,10);
+  document.getElementById('chipsBox').innerHTML=chips.map(s=>`<button class="chip" onclick="pickName('${s}')">${s}</button>`).join('');
+}
+function onNameInput(){
+  const v=document.getElementById('eName').value;
+  filterChips(v);showLastBought(v);
+}
+function filterChips(v){
+  const cat=document.getElementById('eCat').value;
+  const base=SUGG[cat]||[];
+  const past=[...new Set(entries.map(e=>e.name))];
+  const all=[...new Set([...base,...past])];
+  const filtered=v?all.filter(s=>s.includes(v)):base;
+  document.getElementById('chipsBox').innerHTML=filtered.slice(0,8).map(s=>`<button class="chip" onclick="pickName('${s}')">${s}</button>`).join('');
+}
+function pickName(n){document.getElementById('eName').value=n;showLastBought(n);}
+function showLastBought(n){
+  if(!n){document.getElementById('lastBoughtCard').style.display='none';return;}
+  const e=entries.find(x=>x.name===n);
+  if(!e){document.getElementById('lastBoughtCard').style.display='none';return;}
+  document.getElementById('lastBoughtCard').style.display='block';
+  document.getElementById('lastBoughtInfo').innerHTML=`
+    <div class="entry-item" style="padding:8px 0">
+      <div class="entry-info">
+        <div class="entry-meta">கடைசியாக: ${fDate(e.date)}</div>
+        <div style="font-size:14px;font-weight:700;margin-top:2px">${e.amount} ${e.unit} → ₹${(e.actualPrice||0).toFixed(0)} (₹${(e.pricePerUnit||0).toFixed(0)}/${e.unit})</div>
+      </div>
+      <button class="chip" onclick="prefill('${e.id}')">Quick fill</button>
+    </div>`;
+}
+function prefill(id){
+  const e=entries.find(x=>x.id===id);if(!e)return;
+  document.getElementById('eCat').value=e.category;
+  document.getElementById('eName').value=e.name;
+  document.getElementById('eAmt').value=e.amount;
+  document.getElementById('eUnit').value=e.unit;
+  document.getElementById('ePPU').value=e.pricePerUnit||'';
+  document.getElementById('eActual').value=e.actualPrice||'';
+  updateChips();
+}
+function autoCalc(){
+  const a=parseFloat(document.getElementById('eAmt').value)||0;
+  const p=parseFloat(document.getElementById('ePPU').value)||0;
+  if(a>0&&p>0)document.getElementById('eActual').value=(a*p).toFixed(2);
+}
+async function saveEntry(){
+  const name=document.getElementById('eName').value.trim();
+  const date=document.getElementById('eDate').value;
+  const cat=document.getElementById('eCat').value;
+  const amt=parseFloat(document.getElementById('eAmt').value)||0;
+  const unit=document.getElementById('eUnit').value;
+  const ppu=parseFloat(document.getElementById('ePPU').value)||0;
+  const actual=parseFloat(document.getElementById('eActual').value)||0;
+  const notes=document.getElementById('eNotes').value.trim();
+  if(!name||!date||!amt){toast('⚠️ பெயர், தேதி, அளவு தேவை!');return;}
+  const btn=document.getElementById('saveBtn');btn.textContent='⏳ சேமிக்கிறது...';btn.disabled=true;
+  const data={name,date,category:cat,amount:amt,unit,pricePerUnit:ppu,actualPrice:actual,notes,updatedAt:firebase.firestore.FieldValue.serverTimestamp()};
+  try{
+    if(editId){await uRef().collection('entries').doc(editId).update(data);editId=null;toast('✅ திருத்தம் சேமிக்கப்பட்டது!');}
+    else{data.createdAt=firebase.firestore.FieldValue.serverTimestamp();await uRef().collection('entries').add(data);toast('✅ பதிவு சேர்க்கப்பட்டது!');}
+    clearForm();await loadEntries();renderHome();renderHistory();fillCmpSel();
+  }catch(e){toast('❌ '+e.message);}
+  btn.textContent='✓ சேமி';btn.disabled=false;
+}
+function clearForm(){
+  editId=null;
+  ['eName','eAmt','ePPU','eActual','eNotes'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('eDate').value=new Date().toISOString().slice(0,10);
+  document.getElementById('saveBtn').textContent='✓ சேமி';
+  document.getElementById('addTitle').textContent='➕ புதிய பதிவு சேர்க்க';
+  document.getElementById('lastBoughtCard').style.display='none';
+  updateChips();
+}
+
+// ── HISTORY ──
+function setHFilter(f,btn){hFilter=f;document.querySelectorAll('.fchip').forEach(c=>c.classList.remove('active'));btn.classList.add('active');renderHistory();}
+function renderHistory(){
+  const q=(document.getElementById('hSearch')?.value||'').toLowerCase();
+  let list=[...entries];
+  if(hFilter==='month')list=mEntries(curMonth);
+  else if(hFilter!=='all')list=list.filter(e=>e.category===hFilter);
+  if(q)list=list.filter(e=>e.name.toLowerCase().includes(q)||e.category.toLowerCase().includes(q));
+  if(!list.length){document.getElementById('historyList').innerHTML='<div class="empty"><div class="ei">📭</div><p>பதிவுகள் இல்லை</p></div>';return;}
+  const grps={};
+  list.forEach(e=>{const k=e.date?e.date.slice(0,7):'?';if(!grps[k])grps[k]=[];grps[k].push(e);});
+  let html='';
+  Object.keys(grps).sort().reverse().forEach(m=>{
+    const[y,mo]=m.split('-');
+    const tot=grps[m].reduce((s,e)=>s+(e.actualPrice||0),0);
+    html+=`<div class="grp-hdr"><span>${MO_TA[+mo-1]} ${y}</span><span style="color:var(--p)">₹${tot.toFixed(0)}</span></div>`;
+    html+=`<div class="card" style="padding:8px 12px">`;
+    grps[m].forEach(e=>{
+      const em=EMO[e.category]||'📦';
+      html+=`<div class="entry-item" onclick="openEntry('${e.id}')">
+        <div class="entry-emoji">${em}</div>
+        <div class="entry-info"><div class="entry-name">${e.name}</div><div class="entry-meta">${e.amount} ${e.unit} • ${fDate(e.date)}</div></div>
+        <div class="entry-price"><div class="entry-price-main">₹${(e.actualPrice||0).toFixed(0)}</div><div class="entry-price-sub">₹${(e.pricePerUnit||0).toFixed(0)}/${e.unit}</div></div>
+      </div>`;
+    });
+    html+=`</div>`;
+  });
+  document.getElementById('historyList').innerHTML=html;
+}
+
+// ── COMPARE ──
+function fillCmpSel(){
+  const names=[...new Set(entries.map(e=>e.name))].sort();
+  document.getElementById('cmpSel').innerHTML='<option value="">— தேர்ந்தெடு —</option>'+names.map(n=>`<option value="${n}">${n}</option>`).join('');
+}
+function loadCompare(){
+  const name=document.getElementById('cmpSel').value;
+  if(!name)return;
+  const list=entries.filter(e=>e.name===name).sort((a,b)=>a.date>b.date?1:-1);
+  if(!list.length){document.getElementById('cmpResults').innerHTML='<div class="empty"><div class="ei">🔍</div><p>தரவு இல்லை</p></div>';return;}
+  const mData={};
+  list.forEach(e=>{
+    const k=e.date.slice(0,7);
+    if(!mData[k])mData[k]={ppus:[],total:0,count:0};
+    if(e.pricePerUnit)mData[k].ppus.push(e.pricePerUnit);
+    mData[k].total+=e.actualPrice||0;mData[k].count++;
+  });
+  const months=Object.keys(mData).sort();
+  const avgs=months.map(m=>{const ps=mData[m].ppus;return ps.length?ps.reduce((a,b)=>a+b,0)/ps.length:0;});
+  const unit=list[0].unit;
+  let html=`<div class="card"><div class="card-title">📈 விலை வரைபடம் — ${name}</div><div class="chart-wrap"><canvas id="pChart"></canvas></div></div>`;
+  html+=`<div class="card"><div class="card-title">📋 மாதவார விவரம்</div><table class="compare-table"><thead><tr><th>மாதம்</th><th>சராசரி/unit</th><th>மொத்தம்</th><th>மாற்றம்</th></tr></thead><tbody>`;
+  months.forEach((m,i)=>{
+    const[y,mo]=m.split('-');const avg=avgs[i];const tot=mData[m].total;
+    const prev=i>0?avgs[i-1]:null;
+    let chgHtml='—';
+    if(prev!==null&&prev>0){const c=((avg-prev)/prev)*100;chgHtml=`<span class="badge ${c>0?'b-up':c<0?'b-down':'b-same'}">${c>0?'↑':c<0?'↓':'='} ${Math.abs(c).toFixed(1)}%</span>`;}
+    html+=`<tr><td>${MO_TA[+mo-1].slice(0,3)} ${y}</td><td>₹${avg.toFixed(2)}</td><td>₹${tot.toFixed(0)}</td><td>${chgHtml}</td></tr>`;
+  });
+  html+=`</tbody></table></div>`;
+  document.getElementById('cmpResults').innerHTML=html;
+  setTimeout(()=>{
+    if(priceChart)priceChart.destroy();
+    priceChart=new Chart(document.getElementById('pChart').getContext('2d'),{
+      type:'line',
+      data:{
+        labels:months.map(m=>{const[y,mo]=m.split('-');return MO_TA[+mo-1].slice(0,3)+' '+y.slice(2);}),
+        datasets:[{label:`₹/${unit}`,data:avgs,borderColor:'#16a34a',backgroundColor:'rgba(22,163,74,.12)',tension:.35,fill:true,pointBackgroundColor:'#16a34a',pointRadius:5,pointHoverRadius:7}]
+      },
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'₹'+v},grid:{color:'#f0f0f0'}},x:{grid:{display:false}}}}
+    });
+  },100);
+}
+
+// ── SHOPPING ──
+function onShopNameInput(){
+  const v=document.getElementById('sName').value;
+  const all=[...new Set(entries.map(e=>e.name))];
+  const filtered=v?all.filter(s=>s.includes(v)):all.slice(0,8);
+  document.getElementById('shopChips').innerHTML=filtered.slice(0,8).map(s=>`<button class="chip" onclick="pickShop('${s}')">${s}</button>`).join('');
+  calcShopEst();
+}
+function pickShop(n){document.getElementById('sName').value=n;calcShopEst();}
+async function addShopItem(){
+  const name=document.getElementById('sName').value.trim();
+  const qty=parseFloat(document.getElementById('sQty').value)||1;
+  const unit=document.getElementById('sUnit').value;
+  if(!name){toast('⚠️ பொருள் பெயர் தேவை!');return;}
+  const item={name,qty,unit,checked:false,createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  const ref=await uRef().collection('shopping').add(item);
+  shopping.unshift({id:ref.id,...item,createdAt:new Date()});
+  document.getElementById('sName').value='';document.getElementById('sQty').value='';
+  renderShop();calcShopEst();
+}
+function renderShop(){
+  const el=document.getElementById('shopList');
+  if(!shopping.length){el.innerHTML='<div class="empty" style="padding:16px"><div class="ei">🛍️</div><p>இன்னும் சேர்க்கவில்லை</p></div>';document.getElementById('shopActions').style.display='none';return;}
+  el.innerHTML=shopping.map(i=>`
+    <div class="shop-item ${i.checked?'done':''}">
+      <div class="chk ${i.checked?'on':''}" onclick="togShop('${i.id}')"> ${i.checked?'✓':''}</div>
+      <div style="flex:1"><div class="s-name">${i.name}</div><div class="s-qty">${i.qty} ${i.unit}</div></div>
+      <div id="se-${i.id}" style="font-size:12px;color:var(--p);font-weight:700;margin-right:8px"></div>
+      <button class="del-btn" onclick="delShop('${i.id}')">×</button>
+    </div>`).join('');
+  document.getElementById('shopActions').style.display=shopping.some(i=>i.checked)?'flex':'none';
+  calcShopEst();
+}
+async function togShop(id){
+  const i=shopping.find(x=>x.id===id);if(!i)return;
+  i.checked=!i.checked;await uRef().collection('shopping').doc(id).update({checked:i.checked});renderShop();
+}
+async function delShop(id){
+  shopping=shopping.filter(i=>i.id!==id);await uRef().collection('shopping').doc(id).delete();renderShop();
+}
+async function clearDone(){
+  const done=shopping.filter(i=>i.checked);shopping=shopping.filter(i=>!i.checked);
+  await Promise.all(done.map(i=>uRef().collection('shopping').doc(i.id).delete()));
+  renderShop();toast('🗑️ வாங்கியவை நீக்கப்பட்டது!');
+}
+function calcShopEst(){
+  let total=0;
+  shopping.forEach(item=>{
+    const last=entries.find(e=>e.name===item.name&&e.pricePerUnit);
+    const el=document.getElementById('se-'+item.id);
+    if(last&&last.pricePerUnit){const est=last.pricePerUnit*item.qty;total+=est;if(el)el.textContent=`≈₹${est.toFixed(0)}`;}
+    else{if(el)el.textContent='';}
+  });
+  document.getElementById('shopEst').textContent=total>0?`≈₹${total.toFixed(0)}`:'';
+  renderShopEst();
+}
+function renderShopEst(){
+  const rows=shopping.map(item=>{
+    const last=entries.find(e=>e.name===item.name&&e.pricePerUnit);
+    if(!last)return null;
+    return`<div class="alert-item"><span style="font-weight:700">${item.name} (${item.qty} ${item.unit})</span><span style="color:var(--p);font-weight:700">≈₹${(last.pricePerUnit*item.qty).toFixed(0)}</span></div>`;
+  }).filter(Boolean);
+  const card=document.getElementById('shopEstCard');
+  if(rows.length){card.style.display='block';document.getElementById('shopEstList').innerHTML=rows.join('');}
+  else{card.style.display='none';}
+}
+async function markShopDone(){
+  const done=shopping.filter(i=>i.checked);
+  if(!done.length){toast('⚠️ ஒன்றும் தேர்ந்தெடுக்கப்படவில்லை!');return;}
+  const today=new Date().toISOString().slice(0,10);
+  const batch=db.batch();
+  done.forEach(item=>{
+    const last=entries.find(e=>e.name===item.name&&e.pricePerUnit);
+    const ppu=last?last.pricePerUnit:0;
+    const ref=uRef().collection('entries').doc();
+    batch.set(ref,{name:item.name,date:today,category:last?.category||'இதர',amount:item.qty,unit:item.unit,pricePerUnit:ppu,actualPrice:ppu*item.qty,notes:'Shopping list இலிருந்து',createdAt:firebase.firestore.FieldValue.serverTimestamp()});
+  });
+  await batch.commit();
+  await clearDone();await loadEntries();renderHome();renderHistory();fillCmpSel();
+  toast(`✅ ${done.length} பொருட்கள் பதிவு செய்யப்பட்டது!`);
+}
+
+// ── BUDGET MODAL ──
+function openBudgetModal(){document.getElementById('bMonth').value=curMonth;const b=budgets[curMonth];document.getElementById('bLimit').value=b?b.limit:'';document.getElementById('budgetOverlay').classList.add('open');}
+function closeBudget(){document.getElementById('budgetOverlay').classList.remove('open');}
+async function saveBudget(){
+  const m=document.getElementById('bMonth').value;const l=parseFloat(document.getElementById('bLimit').value)||0;
+  if(!m||!l){toast('⚠️ மாதம் & தொகை தேவை!');return;}
+  await uRef().collection('budgets').doc(m).set({limit:l,month:m});
+  budgets[m]={limit:l,month:m};closeBudget();renderHome();toast('✅ பட்ஜெட் சேமிக்கப்பட்டது!');
+}
+
+// ── ENTRY MODAL ──
+function openEntry(id){
+  const e=entries.find(x=>x.id===id);if(!e)return;selId=id;
+  document.getElementById('eModalTitle').textContent=`${EMO[e.category]||'📦'} ${e.name}`;
+  document.getElementById('eModalBody').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+      <div class="stat-card"><div class="stat-lbl">அளவு</div><div class="stat-val" style="font-size:16px">${e.amount} ${e.unit}</div></div>
+      <div class="stat-card"><div class="stat-lbl">செலவு</div><div class="stat-val" style="font-size:16px">₹${(e.actualPrice||0).toFixed(0)}</div></div>
+      <div class="stat-card"><div class="stat-lbl">விலை/unit</div><div class="stat-val" style="font-size:16px">₹${(e.pricePerUnit||0).toFixed(0)}</div></div>
+      <div class="stat-card"><div class="stat-lbl">தேதி</div><div class="stat-val" style="font-size:14px">${fDate(e.date)}</div></div>
+    </div>
+    ${e.notes?`<div class="alert-box a-info">📝 ${e.notes}</div>`:''}`;
+  document.getElementById('entryOverlay').classList.add('open');
+}
+function closeEntry(){document.getElementById('entryOverlay').classList.remove('open');selId=null;}
+function editSelected(){
+  const e=entries.find(x=>x.id===selId);if(!e)return;
+  closeEntry();editId=selId;goTab('add');
+  document.getElementById('eCat').value=e.category;document.getElementById('eName').value=e.name;
+  document.getElementById('eDate').value=e.date;document.getElementById('eAmt').value=e.amount;
+  document.getElementById('eUnit').value=e.unit;document.getElementById('ePPU').value=e.pricePerUnit||'';
+  document.getElementById('eActual').value=e.actualPrice||'';document.getElementById('eNotes').value=e.notes||'';
+  document.getElementById('saveBtn').textContent='✓ திருத்தம் சேமி';
+  document.getElementById('addTitle').textContent='✏️ பதிவை திருத்து';
+  updateChips();toast('✏️ திருத்த தயாராக உள்ளது');
+}
+async function deleteSelected(){
+  if(!selId||!confirm('இந்த பதிவை நீக்கவா?'))return;
+  await uRef().collection('entries').doc(selId).delete();
+  entries=entries.filter(e=>e.id!==selId);closeEntry();
+  renderHome();renderHistory();fillCmpSel();toast('🗑️ பதிவு நீக்கப்பட்டது!');
+}
+
+// ── NAV ──
+const TITLES={home:'🛒 மளிகை',add:'➕ புதிய பதிவு',history:'📋 வரலாறு',compare:'📊 ஒப்பீடு',shopping:'🛍️ பட்டியல்'};
+function goTab(tab){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  document.getElementById('sc-'+tab).classList.add('active');
+  document.getElementById('nav-'+tab).classList.add('active');
+  document.getElementById('hdrTitle').textContent=TITLES[tab]||'🛒 மளிகை';
+  if(tab==='compare')fillCmpSel();
+  if(tab==='shopping'){renderShop();calcShopEst();}
+  window.scrollTo(0,0);
+}
+
+// ── UTILS ──
+function fDate(s){if(!s)return'—';const d=new Date(s+'T00:00:00');return`${d.getDate()} ${MO_TA[d.getMonth()]} ${d.getFullYear()}`;}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),3000);}
+
+// Close modals on overlay click
+['budgetOverlay','entryOverlay'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){if(e.target===this){if(id==='budgetOverlay')closeBudget();else closeEntry();}});
+});
+</script>
+</body>
+</html>
