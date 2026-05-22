@@ -395,12 +395,12 @@ body{font-family:'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(
 // FIREBASE CONFIG — replace with yours
 // ══════════════════════════════════════════
 const FC = {
-  apiKey: "AIzaSyDG70_i_fX2nKvLYfZvH74WYxhGMVwpGyU",
-  authDomain: "grocery-planner-e5dc6.firebaseapp.com",
-  projectId: "grocery-planner-e5dc6",
-  storageBucket: "grocery-planner-e5dc6.firebasestorage.app",
-  messagingSenderId: "279073084670",
-  appId: "1:279073084670:web:1ead7b4ae15e6a52c501af"
+  apiKey:"YOUR_API_KEY",
+  authDomain:"YOUR_AUTH_DOMAIN",
+  projectId:"YOUR_PROJECT_ID",
+  storageBucket:"YOUR_STORAGE_BUCKET",
+  messagingSenderId:"YOUR_SENDER_ID",
+  appId:"YOUR_APP_ID"
 };
 firebase.initializeApp(FC);
 const auth = firebase.auth();
@@ -446,6 +446,24 @@ async function doLogin(){
 async function doReg(){
   try{const c=await auth.createUserWithEmailAndPassword(document.getElementById('rEmail').value.trim(),document.getElementById('rPass').value);await c.user.updateProfile({displayName:document.getElementById('rName').value.trim()});}
   catch(e){showAErr(e.message);}
+}
+async function doGoogle(){
+  try{
+    const provider=new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({prompt:'select_account'});
+    await auth.signInWithPopup(provider);
+  }catch(e){
+    if(e.code!=='auth/popup-closed-by-user')showAErr(e.message);
+  }
+}
+async function doGoogle(){
+  try{
+    const provider=new firebase.auth.GoogleAuthProvider();
+    provider.setCustomParameters({prompt:'select_account'});
+    await auth.signInWithPopup(provider);
+  }catch(e){
+    if(e.code!=='auth/popup-closed-by-user')showAErr(e.message);
+  }
 }
 function doLogout(){if(confirm('வெளியேற விரும்புகிறீர்களா?'))auth.signOut();}
 function showAErr(m){const e=document.getElementById('authErr');e.textContent=m;e.style.display='block';}
